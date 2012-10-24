@@ -1,0 +1,47 @@
+
+body {
+  background-color:#EEEEEE;
+  font-family : Arial;
+}
+
+#noteListing {
+ float:left;
+ width:200px;
+ padding:3px;
+ margin:3px;
+ background-color:white;
+}
+
+#noteEdit {
+ float:left;
+ width:300px;
+ background-color:#DDDDEE;
+ padding:3px;
+ margin:3px;
+}
+
+#notePreview {
+ float:left;
+ width:600px;
+ background-color:white;
+ padding:3px;
+ margin:3px;
+}
+
+#buttonBar {
+ margin:8px;
+}
+
+#buttonBar span {
+ background-color:#DDDDDD;
+ padding:5 10 5 10;
+ margin:5px;
+ border-style:outset;
+ border-width:1px;
+ border-color:#CCCCCC;
+ border-radius : 3px;
+ cursor:pointer;
+
+}
+#textEdit {
+}

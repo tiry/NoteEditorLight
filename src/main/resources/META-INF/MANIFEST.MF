@@ -1,0 +1,10 @@
+Bundle-ActivationPolicy: lazy
+Bundle-ClassPath: .
+Manifest-Version: 1.0
+Bundle-Name: NoteEditorLight
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-Vendor: Nuxeo
+Bundle-Version: 5.7.qualifier
+Bundle-ManifestVersion: 2
+Bundle-SymbolicName: NoteEditorLight
+Nuxeo-WebModule: org.nuxeo.ecm.webengine.app.WebEngineModule;name=notes;package=org/nuxeo/notedit;extends=base
