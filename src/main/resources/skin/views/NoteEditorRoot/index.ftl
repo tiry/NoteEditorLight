@@ -2,29 +2,70 @@
 <head>
 
 <link rel="stylesheet" href="${skinPath}/css/noteEditor.css" type="text/css" media="screen" charset="utf-8"/>
+
 <script type="text/javascript" src="${skinPath}/script/jquery/jquery.js"></script>
+<script type="text/javascript" src="/nuxeo/nxthemes-lib/jquery.hotkeys.js"></script>
 
 <script>
+
+function saveNote(id) {
+  var noteData = jQuery("#textEdit").html();
+  jQuery.post("${This.path}/saveNote/" + id, {'note': noteData}, function(data) {
+     //getNotePreviewUrl(id);
+     var iframe = jQuery("#notePreviewFrame");
+     iframe.attr("src", iframe.attr("src"));
+     });
+}
+
 function getNotesData(cb) {
-  var noteList = [];
-  noteList.push({'dc:title':'Note 1', "dc:description" : "My Super Note 1", "id" : "1"});
-  noteList.push({'dc:title':'Note 2', "dc:description" : "My Super Note 2", "id" : "2"});
-  noteList.push({'dc:title':'Note 3', "dc:description" : "My Super Note 3", "id" : "3"});
-  cb(noteList);
+  jQuery.get("${This.path}/listNotes", function(data) {
+       cb(data);
+  });
 }
 
 function getNoteBody(id, cb) {
-  cb("Note " + id + " \nHGFGGFHGF JHGJHGJHG  JHGJHGJHGg  hgj hgj gjhg jhg jhg jhg jhg ");
+  jQuery.get("${This.path}/getNote/" + id, function(data) {
+    cb(data);
+    // bind button
+    jQuery("#saveBtn").unbind("click");
+    jQuery("#saveBtn").click( function() { saveNote(id);return false;});
+    // bind short key
+    jQuery(document).bind('keydown', 'Ctrl+S', function() { saveNote(id);return false;});
+    });
+}
+
+function getNotePreviewUrl(id) {
+  jQuery.get("${This.path}/getPreviewUrl/" + id, function(url) {
+     var refreshPreview = function() {
+      var iframe = jQuery("#notePreviewFrame");
+      iframe.attr("src", url);
+    }
+    jQuery("#previewBtn").click(refreshPreview);
+    jQuery(document).bind('keydown', 'Ctrl+p', function() { refreshPreview();return false;});
+    refreshPreview();
+    });
 }
 
 function autoSize() {
  var w = jQuery(document).width();
  w = w - jQuery("#noteListing").width();
- w = w - jQuery("#notePreview").width();
- w = w - 60;
- jQuery("#noteEdit").width(w);
+ w = w - jQuery("#noteEdit").width();
+ w = w - 80;
+ jQuery("#notePreview").width(w);
 
  jQuery("#notePreviewFrame").width(jQuery("#notePreview").width()-20);
+ jQuery("#notePreviewFrame").height(jQuery(document).height()-100);
+}
+
+function fitSize(format) {
+  autoSize();
+  var w = jQuery("#notePreviewFrame").width();
+  if (format=='letter') {
+    jQuery("#notePreviewFrame").height(1.4*w);
+  }
+  else if (format=='landscape') {
+    jQuery("#notePreviewFrame").height(w*0.66);
+  }
 }
 
 function displayNodeForEdit(id) {
@@ -32,11 +73,7 @@ function displayNodeForEdit(id) {
   container.html("... loading ...");
   var cb = function(noteBody) {
     container.html(noteBody);
-    var refreshPreview = function() {
-      var iframe = jQuery("#notePreviewFrame");
-      iframe.attr("src", id);
-    }
-    jQuery("#previewBtn").click(refreshPreview);
+    getNotePreviewUrl(id);
   }
   getNoteBody(id, cb);
 }
@@ -48,12 +85,12 @@ function refreshNoteList() {
     container.html("");
 
     for (var i = 0 ; i < noteList.length; i++) {
-      var noteDiv = jQuery("<div></div>");
+      var noteDiv = jQuery("<div class='noteItem'></div>");
       var docId = noteList[i].id;
       noteDiv.attr("id",docId);
       noteDiv.addClass("SmallNote");
-      var noteTitle = jQuery("<h3>" + noteList[i]['dc:title'] + "</h3>");
-      var noteDesc = jQuery("<em>" + noteList[i]['dc:description'] + "</em>");
+      var noteTitle = jQuery("<div class='noteTitle'>" + noteList[i]['dc:title'] + "</div>");
+      var noteDesc = jQuery("<div class='noteDescription'>" + noteList[i]['dc:description'] + "</div>");
 
       noteDiv.append(noteTitle);
       noteDiv.append(noteDesc);
@@ -78,7 +115,7 @@ jQuery(document).ready(function() {
 
 <div id="topContainer">
 
- <div id="buttonBar">
+ <div class="buttonBar">
    <span id="refreshBtn">Refresh</span>
    <span id="saveBtn">Save</span>
    <span id="previewBtn">Preview</span>
@@ -86,47 +123,20 @@ jQuery(document).ready(function() {
  <div id="editBar">
 
   <div id="noteListing">
-    <div> Note 1 </div>
-    <div> Note 2 </div>
-    <div> Note 3 </div>
+
   </div>
 
   <div id="noteEdit">
    <pre id="textEdit" contentEditable="true">
-# User Manager questions
-
-## Password validation
-
-**Can the system require a minimum password length?**
-
-**Can the system require complex passwords that contain certain types of characters, combinations of alpha-numeric-special characters, prevent password same as user name, etc.?**
-
-You can define the JSF validator for the password widget.
-
-For this you can extend or encapsulate the default JSF validator method :
-
-    UserManagementActions.validatePassword
-
-You can also rely on the UserManager.getUserPasswordPattern() method that can be configured from the extension point.
-
-
-**When a user changes passwords, can the system force the user to define a new password different from the preceding N passwords?**
-
-By default Nuxeo does not store previous password for each user.
-
-In fact, Nuxeo may even not have any knoledge of the password : this is typically the case for LDAP bindings.
-
-However, if you use the SQL implentation of directory for the Users, you will be able to access to the password.
-If you want to store previous password, you will have to contribute a wrapper to the SQL Directory to save Passwords.
-(simply *"extend the user.xsd schema"*)
-
-Once you have access to this information you can use a JSF validator.
-
-By default, there is a password validator, you may want to take it as an example.
-     </pre>
+   </pre>
   </div>
 
   <div id="notePreview">
+   <div class="buttonBar">
+     <span class="format" onclick="fitSize('letter')">Letter format</span>
+     <span class="format" onclick="fitSize('landscape')">Landscape</span>
+   </div>
+
    <iframe id="notePreviewFrame" frameborder="0" />
   </div>
  </div>
