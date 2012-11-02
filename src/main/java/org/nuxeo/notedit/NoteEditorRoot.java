@@ -45,10 +45,19 @@ import org.nuxeo.template.api.adapters.TemplateSourceDocument;
 @WebObject(type = "NoteEditorRoot")
 public class NoteEditorRoot extends ModuleRoot {
 
+    protected static final int MAX_DESC = 20;
+
     @GET
     @Produces("text/html;charset=UTF-8")
     public Object doGet() {
         return getView("index");
+    }
+
+    protected String getShortDescription(String desc) {
+        if (desc != null && desc.length() > MAX_DESC) {
+            return desc.substring(0, MAX_DESC) + "...";
+        }
+        return desc;
     }
 
     @GET
@@ -59,21 +68,20 @@ public class NoteEditorRoot extends ModuleRoot {
         CoreSession session = getContext().getCoreSession();
         String query = "select * from Note where dc:contributors in ('"
                 + getContext().getPrincipal().getName()
-                + "')  and ecm:isProxy = 0 and ecm:isCheckedInVersion=0 order by dc:modified desc";
+                + "')  and ecm:isProxy = 0 and ecm:isCheckedInVersion=0 and ecm:currentLifeCycleState != 'deleted' order by dc:modified desc";
 
         DocumentModelList notes = session.query(query);
 
         JSONArray notesDescriptors = new JSONArray();
-
         for (DocumentModel note : notes) {
             JSONObject noteDesc = new JSONObject();
             noteDesc.put("dc:title", (String) note.getPropertyValue("dc:title"));
             noteDesc.put("dc:description",
                     (String) note.getPropertyValue("dc:description"));
+            noteDesc.put("previewUrl", getNotePreviewUrl(note));
             noteDesc.put("id", note.getId());
             notesDescriptors.put(noteDesc);
         }
-
         return notesDescriptors.toString();
     }
 
@@ -89,18 +97,12 @@ public class NoteEditorRoot extends ModuleRoot {
         return html;
     }
 
-    @GET
-    @Path("getPreviewUrl/{id}")
-    @Produces("text/plain;charset=UTF-8")
-    public String getNotePreviewUrl(@PathParam("id")
-    String id) throws Exception {
-        CoreSession session = getContext().getCoreSession();
-        DocumentModel note = session.getDocument(new IdRef(id));
-
+    protected String getNotePreviewUrl(DocumentModel note) throws Exception {
         TemplateBasedDocument templateBased = note.getAdapter(TemplateBasedDocument.class);
         if (templateBased != null) {
             for (TemplateSourceDocument source : templateBased.getSourceTemplates()) {
-                if (source.getTargetRenditionName().equals("webView")) {
+                if (source.getTargetRenditionName() != null
+                        && source.getTargetRenditionName().equals("webView")) {
                     return "/nuxeo/nxtemplate/" + note.getRepositoryName()
                             + "/" + note.getId() + "/" + source.getName();
                 }
@@ -108,6 +110,16 @@ public class NoteEditorRoot extends ModuleRoot {
         }
         return "/nuxeo/restAPI/preview/" + note.getRepositoryName() + "/"
                 + note.getId() + "/default/?blobPostProcessing=true";
+    }
+
+    @GET
+    @Path("getPreviewUrl/{id}")
+    @Produces("text/plain;charset=UTF-8")
+    public String getNotePreviewUrl(@PathParam("id")
+    String id) throws Exception {
+        CoreSession session = getContext().getCoreSession();
+        DocumentModel note = session.getDocument(new IdRef(id));
+        return getNotePreviewUrl(note);
     }
 
     @POST

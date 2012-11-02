@@ -64,6 +64,7 @@ body {
  font-style : italic;
  padding : 3px;
  color: #666666;
+ text-overflow: ellipsis;
 }
 
 #textEdit {

@@ -8,23 +8,161 @@
 
 <script>
 
+function RemoteRepository(baseUrl) {
+
+  this.baseUrl = baseUrl;
+
+  this.storeNote = function(id,noteData,cb) {
+    console.log("save Note " + id);
+    jQuery.post( this.baseUrl + "/saveNote/" + id, {'note': noteData}, function(data) {
+     cb(data);
+     });
+  };
+
+  this.readNote = function(id,cb) {
+    jQuery.get(this.baseUrl + "/getNote/" + id, function(data) {
+      cb(data);
+      });
+  };
+
+  this.listNotes = function(cb) {
+    jQuery.get(this.baseUrl + "/listNotes", function(data) {
+       cb(data);
+    });
+  };
+
+  this.getPreviewUrl = function(id,cb) {
+    jQuery.get(this.baseUrl + "/getPreviewUrl/" + id, cb);
+  };
+
+}
+
+function LocalRepository() {
+
+  this.storeNote = function(id,noteData,cb) {
+    localStorage.setItem(id,noteData);
+    if (cb!=null) {
+     cb(noteData);
+    }
+  };
+
+  this.readNote = function(id,cb) {
+    var noteData = localStorage.getItem(id);
+    if (cb!=null) {
+      cb(noteData);
+    }
+  };
+
+  this.listNotes = function(cb) {
+    var jsonStr = localStorage.getItem("notesList");
+    if (jsonStr!=null) {
+      cb(JSON.parse(jsonStr));
+    }
+  };
+
+  this.saveList = function(data) {
+    localStorage.setItem("notesList", JSON.stringify(data));
+  };
+
+  this.getPreviewUrl = function(id,cb) {
+  };
+}
+
+function RepositoryWrapper(baseUrl, offline, onchange) {
+
+  this.remote = new RemoteRepository(baseUrl);
+  this.local = new LocalRepository();
+  this.offline = offline;
+  this.onchange = onchange;
+
+  if(this.onchange) {
+    this.onchange(this.offline);
+  }
+
+  this.storeNote = function(id,noteData,cb) {
+    this.local.storeNote(id, noteData,cb);
+    if (!this.offline) {
+      this.remote.storeNote(id,noteData,cb);
+    } else {
+    }
+  };
+
+  this.readNote = function(id,cb) {
+    if (!this.offline) {
+      var local = this.local;
+      this.remote.readNote(id, function(data) {
+        local.storeNote(id, data, null);
+        cb(data);
+      });
+    } else {
+      this.local.readNote(id, cb);
+    }
+  };
+
+  this.setOffline = function(newOffline) {
+    if(newOffline == this.offline) {
+      return;
+    }
+    if (newOffline) {
+      this.putOffline();
+    } else {
+      this.putOnline();
+    }
+    if (this.onchange!=null) {
+      this.onchange(this.offline);
+    }
+  };
+
+  this.putOnline = function() {
+    this.offline=false;
+  };
+
+  this.putOffline = function() {
+    this.offline=true;
+  };
+
+  this.listNotes = function(cb) {
+    if (!this.offline) {
+      var local = this.local;
+      this.remote.listNotes(function(data) {
+        local.saveList(data);
+        cb(data);
+        });
+    } else {
+      this.local.listNotes(cb);
+    }
+  };
+
+  this.getPreviewUrl = function(id,cb) {
+    if (!this.offline) {
+      this.remote.getPreviewUrl(id,cb);
+    }
+  };
+}
+
+
+function getStore() {
+  return store;
+}
+
 function saveNote(id) {
   var noteData = jQuery("#textEdit").html();
-  jQuery.post("${This.path}/saveNote/" + id, {'note': noteData}, function(data) {
+  getStore().storeNote(id, noteData, function(data) {
      //getNotePreviewUrl(id);
      var iframe = jQuery("#notePreviewFrame");
      iframe.attr("src", iframe.attr("src"));
      });
 }
 
-function getNotesData(cb) {
-  jQuery.get("${This.path}/listNotes", function(data) {
+function listNotes(cb) {
+  getStore().listNotes(function(data) {
        cb(data);
   });
 }
 
 function getNoteBody(id, cb) {
-  jQuery.get("${This.path}/getNote/" + id, function(data) {
+
+  getStore().readNote(id,function(data) {
     cb(data);
     // bind button
     jQuery("#saveBtn").unbind("click");
@@ -32,10 +170,10 @@ function getNoteBody(id, cb) {
     // bind short key
     jQuery(document).bind('keydown', 'Ctrl+S', function() { saveNote(id);return false;});
     });
-}
+ }
 
 function getNotePreviewUrl(id) {
-  jQuery.get("${This.path}/getPreviewUrl/" + id, function(url) {
+  getStore().getPreviewUrl(id,function(url) {
      var refreshPreview = function() {
       var iframe = jQuery("#notePreviewFrame");
       iframe.attr("src", url);
@@ -71,6 +209,7 @@ function fitSize(format) {
 function displayNodeForEdit(id) {
   var container = jQuery("#noteEdit #textEdit");
   container.html("... loading ...");
+  jQuery(document).unbind('keydown');
   var cb = function(noteBody) {
     container.html(noteBody);
     getNotePreviewUrl(id);
@@ -101,10 +240,26 @@ function refreshNoteList() {
       noteDiv.click(clickCB);
     }
    }
-  getNotesData(cb);
+  listNotes(cb);
+}
+
+var store;
+
+function onNetworkChange(offline) {
+  var offlineBtn = jQuery("#offlineBtn");
+  offlineBtn.unbind('click');
+  if (offline) {
+    offlineBtn.html("You are currently offline / Click to go online");
+    offlineBtn.click(function() {getStore().setOffline(false)});
+  } else {
+    offlineBtn.html("You are currently online / Click to go offline");
+    offlineBtn.click(function() {getStore().setOffline(true)})	;
+  }
 }
 
 jQuery(document).ready(function() {
+  //var store = new RemoteRepository("${This.path}");
+  store = new RepositoryWrapper("${This.path}", true, onNetworkChange);
   refreshNoteList();
   autoSize();
 });
@@ -119,6 +274,7 @@ jQuery(document).ready(function() {
    <span id="refreshBtn">Refresh</span>
    <span id="saveBtn">Save</span>
    <span id="previewBtn">Preview</span>
+   <span id="offlineBtn"></span>
  </div>
  <div id="editBar">
 
