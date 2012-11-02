@@ -3,8 +3,11 @@
 
 function NoteEditor(url, offline) {
 
+  // store config
   this.url = url;
   this.offline = offline;
+
+  // keep object ref
   editor = this;
 
   this.saveNote = function (id) {
@@ -50,6 +53,7 @@ function NoteEditor(url, offline) {
     jQuery(document).unbind('keydown');
     var cb = function(noteBody) {
       container.html(noteBody);
+      editor.currentNoteId = id;
       editor.getNotePreviewUrl(id);
     }
     editor.getNoteBody(id, cb);
@@ -57,16 +61,21 @@ function NoteEditor(url, offline) {
 
   this.onNetworkChange = function (offline) {
     var offlineBtn = jQuery("#offlineBtn");
+    var offlineStatus = jQuery("#offlineStatus");
     offlineBtn.unbind('click');
     if (offline) {
-      offlineBtn.html("You are currently offline / Click to go online");
+      offlineStatus.html("You are currently offline");
+      offlineBtn.html("Go online");
       offlineBtn.click(function() {editor.store.setOffline(false)});
     } else {
-      offlineBtn.html("You are currently online / Click to go offline");
-      offlineBtn.click(function() {editor.store.setOffline(true)})	;
+      offlineStatus.html("You are currently online");
+      offlineBtn.html("Go offline");
+      offlineBtn.click(function() {editor.store.setOffline(true)});
+      if (editor.currentNoteId !=null) {
+        editor.getNotePreviewUrl(editor.currentNoteId);
+      }
     }
   };
-
 
   this.refreshNoteList = function () {
     var container = jQuery("#noteListing");
@@ -92,6 +101,7 @@ function NoteEditor(url, offline) {
     editor.listNotes(cb);
   };
 
+  // init
   this.init = function() {
     this.store = new RepositoryWrapper(this.url, this.offline, this.onNetworkChange);
     this.currentNoteId=null;

@@ -25,6 +25,7 @@ jQuery(document).ready(function() {
    <span id="saveBtn">Save</span>
    <span id="previewBtn">Preview</span>
    <span id="offlineBtn"></span>
+   <span id="offlineStatus" style="float:right"></span>
  </div>
  <div id="editBar">
 

@@ -67,6 +67,13 @@ body {
  text-overflow: ellipsis;
 }
 
+#offlineStatus {
+ float:right;
+ border:0px;
+ background-color:none;
+ font-style: italic;
+}
+
 #textEdit {
 }
 
